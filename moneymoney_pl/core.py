@@ -16,7 +16,6 @@ def have_same_sign(a, b):
 def set_sign_of_other_number (number, number_to_change):
     return abs(number_to_change) if number>=0 else -abs(number_to_change)
 
-
 def operationstypes(shares):
     return 4 if shares>=0 else 5
     
@@ -240,4 +239,4 @@ def calculate_io_finish(d):
 
     del d["lazy_factors"]
     del d["lazy_quotes"]
-    return dumps(d, indent=4,  cls=DjangoJSONEncoder)
+    return dumps(d, indent=4,   cls=DjangoJSONEncoder)
