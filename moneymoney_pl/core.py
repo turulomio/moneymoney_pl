@@ -3,6 +3,19 @@
 from django.core.serializers.json import DjangoJSONEncoder 
 from json import dumps
 
+
+class MyDjangoJSONEncoder(DjangoJSONEncoder):    
+    def default(self, o):
+        if o.__class__.__name__=="Decimal":
+            return float(o)
+        if o.__class__.__name__=="bytes":
+            return b64encode(o).decode("UTF-8")
+        if o.__class__.__name__=="Percentage":
+            return o.value
+        if o.__class__.__name__=="Currency":
+            return o.amount
+        return super().default(o)
+
 def realmultiplier(pia):
     if pia["productstypes_id"] in (12, 13):
         return pia['multiplier'] 
@@ -145,7 +158,7 @@ def calculate_io_lazy(dt, pia,  io_rows, currency_user):
                     break
     return { "io": io, "io_current": cur,"io_historical":hist, "pia":pia, "lazy_quotes":lazy_quotes, "lazy_factors": lazy_factors}
 
-def calculate_io_finish(d):
+def calculate_io_finish(d, show_data):
     def lf(from_, to_, dt):
         return d["lazy_factors"][(from_, to_, dt)]
         
@@ -153,7 +166,6 @@ def calculate_io_finish(d):
         return d["lazy_quotes"][(products_id, dt)]
     
     pia=d["pia"]
-    
     
     d["total_io"]={}
 
@@ -236,7 +248,7 @@ def calculate_io_finish(d):
         d["total_io_current"]["invested_user"]=d["total_io_current"]["invested_user"]+c['invested_user']
         d["total_io_current"]["invested_investment"]=d["total_io_current"]["invested_investment"]+c['invested_investment']     
         sumaproducto=sumaproducto+c['shares']*c["price_investment"] 
-    d["total_io_current"]["average_price_investment"]=sumaproducto/d["total_io_current"]["shares"]
+    d["total_io_current"]["average_price_investment"]=sumaproducto/d["total_io_current"]["shares"] if d["total_io_current"]["shares"]>0 else 0
         
     d["total_io_historical"]={}
     d["total_io_historical"]["commissions_account"]=0
@@ -275,4 +287,12 @@ def calculate_io_finish(d):
 
     del d["lazy_factors"]
     del d["lazy_quotes"]
-    return dumps(d, indent=4,   cls=DjangoJSONEncoder)
+    
+    
+    
+    if show_data is False:
+        del d["io"]
+        del d["io_current"]
+        del d["io_historical"]
+    
+    return d
