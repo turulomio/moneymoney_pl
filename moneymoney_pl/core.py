@@ -33,30 +33,22 @@ def operationstypes(shares):
     return 4 if shares>=0 else 5
     
 
-## Returns
-## -io_rows
-## -ioc_rows
-## -ioh_rows
 ## lazy_factors id, dt, from, to
 ## lazy_quotes product, timestamp
-#pia         data_plan=plpy.prepare('SELECT products.id as products_id, multiplier, accounts.currency as accounts_currency,
-#products.currency as products_currency, productstypes_id from accounts, investments, products, leverages where accounts.id=investments.accounts_id and investments.products_id=products.id and leverages.id=products.leverages_id and investments.id=$1', ["integer"])
-## AÑADIR Investments_id
-def calculate_io_lazy(dt, pia,  io_rows, currency_user):
-    #pia products investment account row
+def calculate_io_lazy(dt, data,  io_rows, currency_user):
     lazy_quotes={}
     lazy_factors={}
     
-    pia["currency_product"]=pia["products_currency"]
-    pia["currency_account"]=pia["accounts_currency"]
-    pia["currency_user"]=currency_user
-    pia["dt"]=dt
-    pia['real_leverages']= realmultiplier(pia)
-    del pia["products_currency"]
-    del pia["accounts_currency"]
+    data["currency_product"]=data["products_currency"]
+    data["currency_account"]=data["accounts_currency"]
+    data["currency_user"]=currency_user
+    data["dt"]=dt
+    data['real_leverages']= realmultiplier(data)
+    del data["products_currency"]
+    del data["accounts_currency"]
     
-    lazy_quotes[(pia['products_id'], dt)]=None
-    lazy_factors[(pia["currency_product"], pia["currency_account"], dt)]=None
+    lazy_quotes[(data['products_id'], dt)]=None
+    lazy_factors[(data["currency_product"], data["currency_account"], dt)]=None
 
     ioh_id=0
     io=[]
@@ -64,7 +56,7 @@ def calculate_io_lazy(dt, pia,  io_rows, currency_user):
     hist=[]
 
     for row in io_rows:
-        lazy_factors[(pia["currency_account"], pia["currency_user"],row['datetime'])]=None
+        lazy_factors[(data["currency_account"], data["currency_user"],row['datetime'])]=None
         io.append(row)
         if len(cur)==0 or have_same_sign(cur[0]["shares"], row["shares"]) is True:
             cur.append({
@@ -156,7 +148,7 @@ def calculate_io_lazy(dt, pia,  io_rows, currency_user):
                         "investment2account": row["currency_conversion"],
                     }) 
                     break
-    return { "io": io, "io_current": cur,"io_historical":hist, "pia":pia, "lazy_quotes":lazy_quotes, "lazy_factors": lazy_factors}
+    return { "io": io, "io_current": cur,"io_historical":hist, "data":data, "lazy_quotes":lazy_quotes, "lazy_factors": lazy_factors}
 
 def calculate_io_finish(d, show_data):
     def lf(from_, to_, dt):
@@ -165,16 +157,16 @@ def calculate_io_finish(d, show_data):
     def lq(products_id, dt):
         return d["lazy_quotes"][(products_id, dt)]
     
-    pia=d["pia"]
+    data=d["data"]
     
     d["total_io"]={}
 
     for o in d["io"]:
-        account2user=lf(pia["currency_account"], pia["currency_user"], o["datetime"])
+        account2user=lf(data["currency_account"], data["currency_user"], o["datetime"])
         o['investment2account']=o['currency_conversion']
         o['commission_account']=o['commission']
         o['taxes_account']=o['taxes']
-        o['gross_investment']=abs(o['shares']*o['price']*pia['real_leverages'])
+        o['gross_investment']=abs(o['shares']*o['price']*data['real_leverages'])
         o['gross_account']=o['gross_investment']*o['investment2account']
         o['gross_user']=o['gross_account']*account2user
         o['account2user']=account2user
@@ -201,12 +193,11 @@ def calculate_io_finish(d, show_data):
     d["total_io_current"]["invested_investment"]=0
     sumaproducto=0
 
-
     for c in d["io_current"]:
-        investment2account_at_datetime=lf(pia["currency_product"], pia["currency_account"], pia["dt"] )
-        account2user_at_datetime=lf(pia["currency_account"], pia["currency_user"], pia["dt"])
-        account2user=lf(pia["currency_account"], pia["currency_user"], c["datetime"])
-        quote_at_datetime=lq(pia["products_id"], pia["dt"])
+        investment2account_at_datetime=lf(data["currency_product"], data["currency_account"], data["dt"] )
+        account2user_at_datetime=lf(data["currency_account"], data["currency_user"], data["dt"])
+        account2user=lf(data["currency_account"], data["currency_user"], c["datetime"])
+        quote_at_datetime=lq(data["products_id"], data["dt"])
         c['investment2account_at_datetime']=investment2account_at_datetime
         c['account2user_at_datetime']=account2user_at_datetime
         c['account2user']=account2user
@@ -217,28 +208,28 @@ def calculate_io_finish(d, show_data):
         c['commissions_investment']=c['commissions_account']/c['investment2account']
         c['commissions_user']=c['commissions_account']*account2user
         #Si son cfds o futuros el saldo es 0, ya que es un contrato y el saldo todavía está en la cuenta. Sin embargo cuento las perdidas
-        c['balance_investment']=0 if d["pia"]['productstypes_id'] in (12,13) else abs(c['shares'])*quote_at_datetime*pia['real_leverages']
+        c['balance_investment']=0 if d["data"]['productstypes_id'] in (12,13) else abs(c['shares'])*quote_at_datetime*data['real_leverages']
         c['balance_account']=c['balance_investment']*investment2account_at_datetime
         c['balance_user']=c['balance_account']*account2user_at_datetime
         #Aquí calculo con saldo y futuros y cfd
         if c['shares']>0:
-            c['balance_futures_investment']=c['shares']*quote_at_datetime*pia['real_leverages']
+            c['balance_futures_investment']=c['shares']*quote_at_datetime*data['real_leverages']
         else:
-            diff=(quote_at_datetime-c['price_investment'])*abs(c['shares'])*pia['real_leverages']
-            init_balance=c['price_investment']*abs(c['shares'])*pia['real_leverages']
+            diff=(quote_at_datetime-c['price_investment'])*abs(c['shares'])*data['real_leverages']
+            init_balance=c['price_investment']*abs(c['shares'])*data['real_leverages']
             c['balance_futures_investment']=init_balance-diff
         c['balance_futures_account']=c['balance_futures_investment']*investment2account_at_datetime
         c['balance_futures_user']=c['balance_futures_account']*account2user_at_datetime
-        c['invested_investment']=abs(c['shares']*c['price_investment']*pia['real_leverages'])
+        c['invested_investment']=abs(c['shares']*c['price_investment']*data['real_leverages'])
         c['invested_account']=c['invested_investment']*c['investment2account']
         c['invested_user']=c['invested_account']*account2user
-        c['gains_gross_investment']=(quote_at_datetime - c['price_investment'])*c['shares']*pia['real_leverages']
-        c['gains_gross_account']=(quote_at_datetime*investment2account_at_datetime - c['price_investment']*c['investment2account'])*c['shares']*pia['real_leverages']
-        c['gains_gross_user']=(quote_at_datetime*investment2account_at_datetime*account2user_at_datetime - c['price_investment']*c['investment2account']*account2user)*c['shares']*pia['real_leverages']
+        c['gains_gross_investment']=(quote_at_datetime - c['price_investment'])*c['shares']*data['real_leverages']
+        c['gains_gross_account']=(quote_at_datetime*investment2account_at_datetime - c['price_investment']*c['investment2account'])*c['shares']*data['real_leverages']
+        c['gains_gross_user']=(quote_at_datetime*investment2account_at_datetime*account2user_at_datetime - c['price_investment']*c['investment2account']*account2user)*c['shares']*data['real_leverages']
         c['gains_net_investment']=c['gains_gross_investment'] -c['taxes_investment'] -c['commissions_investment']
         c['gains_net_account']=c['gains_gross_account']-c['taxes_account']-c['commissions_account'] 
         c['gains_net_user']=c['gains_gross_user']-c['taxes_user']-c['commissions_user']
-        
+
         d["total_io_current"]["balance_user"]=d["total_io_current"]["balance_user"]+c['balance_user']
         d["total_io_current"]["balance_investment"]=d["total_io_current"]["balance_investment"]+c['balance_investment']
         d["total_io_current"]["balance_futures_user"]=d["total_io_current"]["balance_futures_user"]+c['balance_futures_user']
@@ -249,22 +240,22 @@ def calculate_io_finish(d, show_data):
         d["total_io_current"]["invested_investment"]=d["total_io_current"]["invested_investment"]+c['invested_investment']     
         sumaproducto=sumaproducto+c['shares']*c["price_investment"] 
     d["total_io_current"]["average_price_investment"]=sumaproducto/d["total_io_current"]["shares"] if d["total_io_current"]["shares"]>0 else 0
-        
+
     d["total_io_historical"]={}
     d["total_io_historical"]["commissions_account"]=0
     d["total_io_historical"]["gains_net_user"]=0
-    
+
     for h in d["io_historical"]:
-        h['account2user_start']=lf(pia["currency_account"], pia["currency_user"], h["dt_start"] )
-        h['account2user_end']=lf(pia["currency_account"], pia["currency_user"], h["dt_end"] )
-        h['gross_start_investment']=0 if h['operationstypes_id'] in (9,10) else abs(h['shares']*h['price_start_investment']*pia['real_leverages'])#Transfer shares 9, 10
+        h['account2user_start']=lf(data["currency_account"], data["currency_user"], h["dt_start"] )
+        h['account2user_end']=lf(data["currency_account"], data["currency_user"], h["dt_end"] )
+        h['gross_start_investment']=0 if h['operationstypes_id'] in (9,10) else abs(h['shares']*h['price_start_investment']*data['real_leverages'])#Transfer shares 9, 10
         if h['operationstypes_id'] in (9,10):
             h['gross_end_investment']=0
         elif h['shares']<0:#Sell after bought
-            h['gross_end_investment']=abs(h['shares'])*h['price_end_investment']*pia['real_leverages']
+            h['gross_end_investment']=abs(h['shares'])*h['price_end_investment']*data['real_leverages']
         else:
-            diff=(h['price_end_investment']-h['price_start_investment'])*abs(h['shares'])*pia['real_leverages']
-            init_balance=h['price_start_investment']*abs(h['shares'])*pia['real_leverages']
+            diff=(h['price_end_investment']-h['price_start_investment'])*abs(h['shares'])*data['real_leverages']
+            init_balance=h['price_start_investment']*abs(h['shares'])*data['real_leverages']
             h['gross_end_investment']=init_balance-diff
         h['gains_gross_investment']=h['gross_end_investment']-h['gross_start_investment']
         h['gross_start_account']=h['gross_start_investment']*h['investment2account_start']
@@ -281,18 +272,17 @@ def calculate_io_finish(d, show_data):
         h['gains_net_investment']=h['gains_gross_investment']-h['taxes_investment']-h['commissions_investment']
         h['gains_net_account']=h['gains_gross_account']-h['taxes_account']-h['commissions_account']
         h['gains_net_user']=h['gains_gross_user']-h['taxes_user']-h['commissions_user']
-        
+
         d["total_io_historical"]["commissions_account"]=d["total_io_historical"]["commissions_account"]+h["commissions_account"]
         d["total_io_historical"]["gains_net_user"]=d["total_io_historical"]["gains_net_user"]+h["gains_net_user"]
 
-    del d["lazy_factors"]
-    del d["lazy_quotes"]
-    
-    
-    
+
     if show_data is False:
         del d["io"]
         del d["io_current"]
         del d["io_historical"]
-    
+
+    del d["lazy_factors"]
+    del d["lazy_quotes"]
+
     return d
