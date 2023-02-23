@@ -2,7 +2,7 @@
   "header": {
     "comment": "eric project file for project MoneyMoneyPL",
     "copyright": "Copyright (C) 2023 , ",
-    "saved": "2023-02-22, 21:38:51"
+    "saved": "2023-02-23, 08:12:32"
   },
   "project": {
     "AUTHOR": "",
@@ -45,6 +45,7 @@
       "IncludeDirs": [],
       "UndefinedNames": []
     },
+    "INTERFACES": [],
     "LEXERASSOCS": {},
     "LICENSE": "",
     "MAINSCRIPT": "",
@@ -59,16 +60,14 @@
     "MIXEDLANGUAGE": false,
     "OTHERS": [
       "MoneyMoneyPL.epj",
-      "README.md",
-      "moneymoney_pl.egg-info/SOURCES.txt",
-      "moneymoney_pl.egg-info/dependency_links.txt",
-      "moneymoney_pl.egg-info/top_level.txt"
+      "README.md"
     ],
     "OTHERTOOLSPARMS": {},
     "PACKAGERSPARMS": {},
     "PROGLANGUAGE": "Python3",
     "PROJECTTYPE": "PyQt6",
     "PROJECTTYPESPECIFICDATA": {},
+    "PROTOCOLS": [],
     "RCCPARAMS": {
       "CompressLevel": 0,
       "CompressionDisable": false,

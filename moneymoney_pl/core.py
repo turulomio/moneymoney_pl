@@ -148,9 +148,14 @@ def calculate_io_lazy(dt, pia,  io_rows, currency_user):
 def calculate_io_finish(d):
     def lf(from_, to_, dt):
         return d["lazy_factors"][(from_, to_, dt)]
+        
     def lq(products_id, dt):
         return d["lazy_quotes"][(products_id, dt)]
+    
     pia=d["pia"]
+    
+    
+    d["total_io"]={}
 
     for o in d["io"]:
         account2user=lf(pia["currency_account"], pia["currency_user"], o["datetime"])
@@ -171,6 +176,19 @@ def calculate_io_finish(d):
         del o["currency_conversion"]
         del o["commission"]
         del o["taxes"]
+
+    d["total_io_current"]={}
+    d["total_io_current"]["balance_user"]=0
+    d["total_io_current"]["balance_investment"]=0
+    d["total_io_current"]["balance_futures_user"]=0
+    d["total_io_current"]["gains_gross_user"]=0
+    d["total_io_current"]["gains_net_user"]=0
+    d["total_io_current"]["shares"]=0
+    d["total_io_current"]["average_price_investment"]=0
+    d["total_io_current"]["invested_user"]=0
+    d["total_io_current"]["invested_investment"]=0
+    sumaproducto=0
+
 
     for c in d["io_current"]:
         investment2account_at_datetime=lf(pia["currency_product"], pia["currency_account"], pia["dt"] )
@@ -209,6 +227,21 @@ def calculate_io_finish(d):
         c['gains_net_account']=c['gains_gross_account']-c['taxes_account']-c['commissions_account'] 
         c['gains_net_user']=c['gains_gross_user']-c['taxes_user']-c['commissions_user']
         
+        d["total_io_current"]["balance_user"]=d["total_io_current"]["balance_user"]+c['balance_user']
+        d["total_io_current"]["balance_investment"]=d["total_io_current"]["balance_investment"]+c['balance_investment']
+        d["total_io_current"]["balance_futures_user"]=d["total_io_current"]["balance_futures_user"]+c['balance_futures_user']
+        d["total_io_current"]["gains_gross_user"]=d["total_io_current"]["gains_gross_user"]+c['gains_gross_user']
+        d["total_io_current"]["gains_net_user"]=d["total_io_current"]["gains_net_user"]+c['gains_net_user']
+        d["total_io_current"]["shares"]=d["total_io_current"]["shares"]+c['shares']
+        d["total_io_current"]["invested_user"]=d["total_io_current"]["invested_user"]+c['invested_user']
+        d["total_io_current"]["invested_investment"]=d["total_io_current"]["invested_investment"]+c['invested_investment']     
+        sumaproducto=sumaproducto+c['shares']*c["price_investment"] 
+    d["total_io_current"]["average_price_investment"]=sumaproducto/d["total_io_current"]["shares"]
+        
+    d["total_io_historical"]={}
+    d["total_io_historical"]["commissions_account"]=0
+    d["total_io_historical"]["gains_net_user"]=0
+    
     for h in d["io_historical"]:
         h['account2user_start']=lf(pia["currency_account"], pia["currency_user"], h["dt_start"] )
         h['account2user_end']=lf(pia["currency_account"], pia["currency_user"], h["dt_end"] )
@@ -236,6 +269,9 @@ def calculate_io_finish(d):
         h['gains_net_investment']=h['gains_gross_investment']-h['taxes_investment']-h['commissions_investment']
         h['gains_net_account']=h['gains_gross_account']-h['taxes_account']-h['commissions_account']
         h['gains_net_user']=h['gains_gross_user']-h['taxes_user']-h['commissions_user']
+        
+        d["total_io_historical"]["commissions_account"]=d["total_io_historical"]["commissions_account"]+h["commissions_account"]
+        d["total_io_historical"]["gains_net_user"]=d["total_io_historical"]["gains_net_user"]+h["gains_net_user"]
 
     del d["lazy_factors"]
     del d["lazy_quotes"]
