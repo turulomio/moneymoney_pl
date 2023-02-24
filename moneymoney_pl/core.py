@@ -110,14 +110,9 @@ def calculate_ios_finish(t, mode):
 def calculate_io_lazy(dt, data,  io_rows, currency_user):
     lazy_quotes={}
     lazy_factors={}
-    
-    data["currency_product"]=data["products_currency"]
-    data["currency_account"]=data["accounts_currency"]
     data["currency_user"]=currency_user
     data["dt"]=dt
     data['real_leverages']= realmultiplier(data)
-    del data["products_currency"]
-    del data["accounts_currency"]
     
     lazy_quotes[(data['products_id'], dt)]=None
     lazy_factors[(data["currency_product"], data["currency_account"], dt)]=None
