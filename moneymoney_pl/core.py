@@ -68,7 +68,7 @@ def calculate_ios_lazy(datetime, lod_investments, lod_ios, currency_user):
     return t
 
 def t_keys_not_investment():
-    return ["lazy_quotes","lazy_factors", "sum_total_io_current", "sum_total_io_historical","mode"]
+    return ["lazy_quotes","lazy_factors", "sum_total_io_current", "sum_total_io_historical","mode","basic_results"]
 
 def calculate_ios_finish(t, mode):
     t["mode"]=mode
