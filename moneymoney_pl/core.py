@@ -63,9 +63,10 @@ def calculate_ios_lazy(datetime, lod_investments, lod_ios, currency_user):
     return t
 
 def t_keys_not_investment():
-    return ["lazy_quotes","lazy_factors", "sum_total_io_current", "sum_total_io_historical"]
+    return ["lazy_quotes","lazy_factors", "sum_total_io_current", "sum_total_io_historical","mode"]
 
 def calculate_ios_finish(t, mode):
+    t["mode"]=mode
     # Is a key too like ios
     t["sum_total_io_current"]={}
     t["sum_total_io_current"]["balance_user"]=0
@@ -98,7 +99,7 @@ def calculate_ios_finish(t, mode):
             del t[investments_id]["io_historical"]
     
     if mode==3:
-        return {"sum_total_io_current": t["sum_total_io_current"], "sum_total_io_historical": t["sum_total_io_historical"]}
+        return {"sum_total_io_current": t["sum_total_io_current"], "sum_total_io_historical": t["sum_total_io_historical"], "mode":t["mode"]}
 
     del t["lazy_factors"]
     del t["lazy_quotes"]
