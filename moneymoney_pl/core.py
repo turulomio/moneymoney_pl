@@ -128,10 +128,10 @@ def postgres_datetime_string_2_dtaware(s):
     return dt
 
 
-a=["1997-06-24 00:00:00.1212+02","1997-06-24 00:00:01.222+02","1997-06-24 00:00:01.222333+02:00"]
+# a=["1997-06-24 00:00:00.1212+02","1997-06-24 00:00:01.222+02","1997-06-24 00:00:01.222333+02:00"]
 
-for i in a:
-    print(i, i.__class__, "==>" , postgres_datetime_string_2_dtaware(i), postgres_datetime_string_2_dtaware(i).__class__)
+# for i in a:
+#     print(i, i.__class__, "==>" , postgres_datetime_string_2_dtaware(i), postgres_datetime_string_2_dtaware(i).__class__)
 
 
 
@@ -153,7 +153,6 @@ def calculate_io_lazy(dt, data,  io_rows, currency_user):
     hist=[]
 
     for row in io_rows:
-        row["datetime"]=postgres_datetime_string_2_dtaware(row["datetime"])
         lazy_factors[(data["currency_account"], data["currency_user"],row['datetime'])]=None
         io.append(row)
         if len(cur)==0 or have_same_sign(cur[0]["shares"], row["shares"]) is True:
