@@ -31,7 +31,79 @@ def set_sign_of_other_number (number, number_to_change):
 
 def operationstypes(shares):
     return 4 if shares>=0 else 5
+
+
+## lod_investments query ivestments
+## lod_ios query investmentsoperations of investments
+def calculate_ios_lazy(datetime, lod_investments, lod_ios, currency_user):
+    investments={}
+    ios={}
+
+    for row in lod_investments:
+        investments[row["investments_id"]]=row
+        ios[row["investments_id"]]=[]
+    for row in lod_ios:
+        ios[row["investments_id"]].append(row)
+
+    lazy_quotes={}
+    lazy_factors={}
+
+    ## Total calculated ios
+    t={}
+    t["lazy_quotes"]={}
+    t["lazy_factors"]={}
+
+    for investments_id, investment in investments.items():
+        d=calculate_io_lazy(datetime, investment, ios[investments_id], currency_user)
+        t["lazy_quotes"].update(d["lazy_quotes"])
+        t["lazy_factors"].update(d["lazy_factors"])
+        del d["lazy_quotes"]
+        del d["lazy_factors"]
+        t[investments_id]=d
+    return t
+
+def t_keys_not_investment():
+    return ["lazy_quotes","lazy_factors", "sum_total_io_current", "sum_total_io_historical"]
+
+def calculate_ios_finish(t, mode):
+    # Is a key too like ios
+    t["sum_total_io_current"]={}
+    t["sum_total_io_current"]["balance_user"]=0
+    t["sum_total_io_current"]["balance_futures_user"]=0
+    t["sum_total_io_current"]["gains_gross_user"]=0
+    t["sum_total_io_current"]["gains_net_user"]=0
+    t["sum_total_io_current"]["invested_user"]=0
+
+    t["sum_total_io_historical"]={}
+    t["sum_total_io_historical"]["commissions_account"]=0
+    t["sum_total_io_historical"]["gains_net_user"]=0
+
+    for investments_id, d in t.items():
+        if investments_id in t_keys_not_investment():
+            continue
+
+        t[investments_id]=calculate_io_finish(t, d, mode)
+
+        t["sum_total_io_current"]["balance_user"]=t["sum_total_io_current"]["balance_user"]+t[investments_id]["total_io_current"]['balance_user']
+        t["sum_total_io_current"]["balance_futures_user"]=t["sum_total_io_current"]["balance_futures_user"]+t[investments_id]["total_io_current"]['balance_futures_user']
+        t["sum_total_io_current"]["gains_gross_user"]=t["sum_total_io_current"]["gains_gross_user"]+t[investments_id]["total_io_current"]['gains_gross_user']
+        t["sum_total_io_current"]["gains_net_user"]=t["sum_total_io_current"]["gains_net_user"]+t[investments_id]["total_io_current"]['gains_net_user']
+        t["sum_total_io_current"]["invested_user"]=t["sum_total_io_current"]["invested_user"]+t[investments_id]["total_io_current"]['invested_user']
+        t["sum_total_io_historical"]["gains_net_user"]=t["sum_total_io_historical"]["gains_net_user"]+t[investments_id]["total_io_historical"]['gains_net_user']
+        t["sum_total_io_historical"]["commissions_account"]=t["sum_total_io_historical"]["commissions_account"]+t[investments_id]["total_io_historical"]['commissions_account']
+
+        if mode in (2,3):
+            del t[investments_id]["io"]
+            del t[investments_id]["io_current"]
+            del t[investments_id]["io_historical"]
     
+    if mode==3:
+        return {"sum_total_io_current": t["sum_total_io_current"], "sum_total_io_historical": t["sum_total_io_historical"]}
+
+    del t["lazy_factors"]
+    del t["lazy_quotes"]
+    return t
+
 
 ## lazy_factors id, dt, from, to
 ## lazy_quotes product, timestamp
@@ -150,12 +222,13 @@ def calculate_io_lazy(dt, data,  io_rows, currency_user):
                     break
     return { "io": io, "io_current": cur,"io_historical":hist, "data":data, "lazy_quotes":lazy_quotes, "lazy_factors": lazy_factors}
 
-def calculate_io_finish(d, show_data):
+def calculate_io_finish(t, d, mode):
     def lf(from_, to_, dt):
-        return d["lazy_factors"][(from_, to_, dt)]
+        return t["lazy_factors"][(from_, to_, dt)]
         
     def lq(products_id, dt):
-        return d["lazy_quotes"][(products_id, dt)]
+        return t["lazy_quotes"][(products_id, dt)]
+        
     
     data=d["data"]
     
@@ -275,14 +348,4 @@ def calculate_io_finish(d, show_data):
 
         d["total_io_historical"]["commissions_account"]=d["total_io_historical"]["commissions_account"]+h["commissions_account"]
         d["total_io_historical"]["gains_net_user"]=d["total_io_historical"]["gains_net_user"]+h["gains_net_user"]
-
-
-    if show_data is False:
-        del d["io"]
-        del d["io_current"]
-        del d["io_historical"]
-
-    del d["lazy_factors"]
-    del d["lazy_quotes"]
-
     return d
