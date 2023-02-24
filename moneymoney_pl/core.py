@@ -2,6 +2,7 @@
 
 from django.core.serializers.json import DjangoJSONEncoder 
 from json import dumps
+from .reusing.datetime_functions import dtaware, dtaware2string
 
 
 class MyDjangoJSONEncoder(DjangoJSONEncoder):    
@@ -14,6 +15,9 @@ class MyDjangoJSONEncoder(DjangoJSONEncoder):
             return o.value
         if o.__class__.__name__=="Currency":
             return o.amount
+        if o.__class__.__name__=="datetime":
+            if is_aware(o):
+                return dtaware2string(o,"JsUtcIso")
         return super().default(o)
 
 def realmultiplier(pia):
