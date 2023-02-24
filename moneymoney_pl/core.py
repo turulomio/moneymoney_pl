@@ -1,5 +1,6 @@
 #from datetime import datetime
 
+from datetime import datetime, timedelta
 from django.core.serializers.json import DjangoJSONEncoder 
 from json import dumps
 from .reusing.datetime_functions import dtaware, dtaware2string
@@ -108,6 +109,30 @@ def calculate_ios_finish(t, mode):
     del t["lazy_factors"]
     del t["lazy_quotes"]
     return t
+def postgres_datetime_string_2_dtaware(s):
+    if s is None:
+        return None
+    arrPlus=s.split("+")
+    zone=arrPlus[1]
+    
+    arrPunto=arrPlus[0].split(".")
+    if len(arrPunto)==2:
+        naive=arrPunto[0]
+        micro=str(arrPunto[1])
+    else:
+        naive=arrPunto[0]
+        micro='0'
+    micro=int(micro+ '0'*(6-len(micro)))
+    dt=datetime.strptime( naive+"+"+zone+":00", "%Y-%m-%d %H:%M:%S%z" )
+    dt=dt+timedelta(microseconds=micro)
+    return dt
+
+
+a=["1997-06-24 00:00:00.1212+02","1997-06-24 00:00:01.222+02","1997-06-24 00:00:01.222333+02:00"]
+
+for i in a:
+    print(i, i.__class__, "==>" , postgres_datetime_string_2_dtaware(i), postgres_datetime_string_2_dtaware(i).__class__)
+
 
 
 ## lazy_factors id, dt, from, to
@@ -128,6 +153,7 @@ def calculate_io_lazy(dt, data,  io_rows, currency_user):
     hist=[]
 
     for row in io_rows:
+        row["datetime"]=postgres_datetime_string_2_dtaware(row["datetime"])
         lazy_factors[(data["currency_account"], data["currency_user"],row['datetime'])]=None
         io.append(row)
         if len(cur)==0 or have_same_sign(cur[0]["shares"], row["shares"]) is True:
