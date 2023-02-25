@@ -1,25 +1,86 @@
 #from datetime import datetime
 
 from datetime import datetime, timedelta
+from decimal import Decimal
 from django.core.serializers.json import DjangoJSONEncoder 
 from json import dumps
-from .reusing.datetime_functions import dtaware, dtaware2string
+#from .reusing.datetime_functions import dtaware, dtaware2string
+
+
+def cast_dict(iter_value, decimal_fields, datetime_fields):
+    """
+        Iterates a dict or list to cast decimals and dtaware in json.loads using objeck_hook
+    """
+    def cast(k, v):
+        if k in decimal_fields and v.__class__==str:
+            return Decimal(v)
+        if k in datetime_fields and v.__class__==str:
+            return postgres_datetime_string_2_dtaware(v)
+        return v
+    #####
+    if isinstance(iter_value, dict):
+        for k, v in iter_value.items():
+            if isinstance(v, dict):
+                iter_value[k]=cast_dict(v, decimal_fields, datetime_fields)
+            elif isinstance(iter_value, list):
+                for i in v:
+                    i=cast_dict(v, decimal_fields, datetime_fields)
+            else:
+                iter_value[k]=cast(k, v)
+    elif isinstance(iter_value, list):
+        for i in v:
+            i=cast_dict(i, decimal_fields, datetime_fields)
+    return iter_value
+
+
+def loads_hooks_tb(o):
+    """
+        Function to json.object_hook for total_balance
+    """
+    return cast_dict(o,  ["accounts_user",'investments_user', 'total_user', 'investments_invested_user'], ["datetime", ])
+
+def loads_hooks_io(o):
+    """
+        Function to json.object_hook for investment_operations
+    """
+    return cast_dict(o,  [
+        "accounts_user",
+        "balance_user",
+        "commissions_account",
+        "gains_gross_user", 
+        "gains_net_user",
+        "invested_investment",
+        'invested_user', 
+        'investments_user', 
+        "multiplier",
+        "shares", 
+        'total_user', 
+        'investments_invested_user'
+    ], [
+        "datetime", 
+        "dt_end", 
+        "dt_start", 
+        "dt"
+    ])
 
 
 class MyDjangoJSONEncoder(DjangoJSONEncoder):    
+    """
+        Converts from dict to json text
+    """
     def default(self, o):
         if o.__class__.__name__=="Decimal":
-            return float(o)
+            return str(o)
         if o.__class__.__name__=="bytes":
             return b64encode(o).decode("UTF-8")
         if o.__class__.__name__=="Percentage":
             return o.value
         if o.__class__.__name__=="Currency":
             return o.amount
-        if o.__class__.__name__=="datetime":
-            if is_aware(o):
-                return dtaware2string(o,"JsUtcIso")
-        return super().default(o)
+#        try:
+#            return postgres_datetime_string_2_dtaware(o)
+#        except:
+        return DjangoJsonEncoder.default(self,o)
 
 def realmultiplier(pia):
     if pia["productstypes_id"] in (12, 13):
