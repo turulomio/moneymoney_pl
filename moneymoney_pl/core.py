@@ -45,6 +45,7 @@ def loads_hooks_io(o):
     """
     return cast_dict(o,  [
         "accounts_user",
+        "balance_futures_user",
         "balance_user",
         "commissions_account",
         "gains_gross_user", 
