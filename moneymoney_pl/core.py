@@ -1,10 +1,7 @@
-#from datetime import datetime
-
+from base64 import b64encode
 from datetime import datetime, timedelta
 from decimal import Decimal
 from django.core.serializers.json import DjangoJSONEncoder 
-from json import dumps
-#from .reusing.datetime_functions import dtaware, dtaware2string
 
 
 def cast_dict(iter_value, decimal_fields, datetime_fields):
@@ -102,10 +99,7 @@ class MyDjangoJSONEncoder(DjangoJSONEncoder):
             return o.value
         if o.__class__.__name__=="Currency":
             return o.amount
-#        try:
-#            return postgres_datetime_string_2_dtaware(o)
-#        except:
-        return DjangoJsonEncoder.default(self,o)
+        return DjangoJSONEncoder.default(self,o)
 
 def realmultiplier(pia):
     if pia["productstypes_id"] in (12, 13):
@@ -135,9 +129,6 @@ def calculate_ios_lazy(datetime, lod_investments, lod_ios, currency_user):
         ios[row["investments_id"]]=[]
     for row in lod_ios:
         ios[row["investments_id"]].append(row)
-
-    lazy_quotes={}
-    lazy_factors={}
 
     ## Total calculated ios
     t={}
@@ -213,14 +204,6 @@ def postgres_datetime_string_2_dtaware(s):
     dt=dt+timedelta(microseconds=micro)
     return dt
 
-
-# a=["1997-06-24 00:00:00.1212+02","1997-06-24 00:00:01.222+02","1997-06-24 00:00:01.222333+02:00"]
-
-# for i in a:
-#     print(i, i.__class__, "==>" , postgres_datetime_string_2_dtaware(i), postgres_datetime_string_2_dtaware(i).__class__)
-
-
-
 ## lazy_factors id, dt, from, to
 ## lazy_quotes product, timestamp
 def calculate_io_lazy(dt, data,  io_rows, currency_user):
@@ -239,6 +222,9 @@ def calculate_io_lazy(dt, data,  io_rows, currency_user):
     hist=[]
 
     for row in io_rows:
+        row["currency_account"]=data["currency_account"]
+        row["currency_product"]=data["currency_product"]
+        row["currency_user"]=data["currency_user"]
         lazy_factors[(data["currency_account"], data["currency_user"],row['datetime'])]=None
         io.append(row)
         if len(cur)==0 or have_same_sign(cur[0]["shares"], row["shares"]) is True:
@@ -252,6 +238,9 @@ def calculate_io_lazy(dt, data,  io_rows, currency_user):
                 "taxes_account":row["taxes"], 
                 "commissions_account": row["commission"], 
                 "investment2account": row["currency_conversion"], 
+                "currency_account": data["currency_account"], 
+                "currency_product": data["currency_product"], 
+                "currency_user":currency_user, 
             }) 
         elif have_same_sign(cur[0]["shares"], row["shares"]) is False:
             rest=row["shares"]
@@ -280,6 +269,9 @@ def calculate_io_lazy(dt, data,  io_rows, currency_user):
                             "price_end_investment":row["price"],
                             "investment2account_start": cur[0]["investment2account"] , 
                             "investment2account_end":row["currency_conversion"] , 
+                            "currency_account": data["currency_account"], 
+                            "currency_product": data["currency_product"], 
+                            "currency_user":currency_user, 
                         })
                         if rest+cur[0]["shares"]!=0:
                             cur.insert(0, {
@@ -291,7 +283,10 @@ def calculate_io_lazy(dt, data,  io_rows, currency_user):
                                 "operationstypes_id": cur[0]['operationstypes_id'], 
                                 "taxes_account":cur[0]["taxes_account"], 
                                 "commissions_account": cur[0]["commissions_account"], 
-                                "investment2account": cur[0]["investment2account"]
+                                "investment2account": cur[0]["investment2account"], 
+                                "currency_account": data["currency_account"], 
+                                "currency_product": data["currency_product"], 
+                                "currency_user":currency_user, 
                             }) 
                             cur.pop(1)
                         else:
@@ -313,6 +308,9 @@ def calculate_io_lazy(dt, data,  io_rows, currency_user):
                             "price_end_investment":row["price"],
                             "investment2account_start":cur[0]["investment2account"], 
                             "investment2account_end":row["currency_conversion"]  , 
+                            "currency_account": data["currency_account"], 
+                            "currency_product": data["currency_product"], 
+                            "currency_user":currency_user, 
                         })
 
                         rest=rest+cur[0]["shares"]
@@ -329,6 +327,9 @@ def calculate_io_lazy(dt, data,  io_rows, currency_user):
                         "taxes_account":row["taxes"], 
                         "commissions_account": row["commission"], 
                         "investment2account": row["currency_conversion"],
+                        "currency_account": data["currency_account"], 
+                        "currency_product": data["currency_product"], 
+                        "currency_user":currency_user, 
                     }) 
                     break
     return { "io": io, "io_current": cur,"io_historical":hist, "data":data, "lazy_quotes":lazy_quotes, "lazy_factors": lazy_factors}
@@ -361,9 +362,6 @@ def calculate_io_finish(t, d, mode):
             o['net_account']=o['gross_account']-o['commission_account']-o['taxes_account']
         o['net_user']=o['net_account']*account2user
         o['net_investment']=o['net_account']/o['investment2account']
-        del o["currency_conversion"]
-        del o["commission"]
-        del o["taxes"]
 
     d["total_io_current"]={}
     d["total_io_current"]["balance_user"]=0
