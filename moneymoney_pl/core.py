@@ -146,10 +146,10 @@ def calculate_ios_lazy(datetime, lod_investments, lod_ios, currency_user):
     ios={}
 
     for row in lod_investments:
-        investments[row["investments_id"]]=row
-        ios[row["investments_id"]]=[]
+        investments[str(row["investments_id"])]=row
+        ios[str(row["investments_id"])]=[]
     for row in lod_ios:
-        ios[row["investments_id"]].append(row)
+        ios[str(row["investments_id"])].append(row)
 
     ## Total calculated ios
     t={}
@@ -162,7 +162,7 @@ def calculate_ios_lazy(datetime, lod_investments, lod_ios, currency_user):
         t["lazy_factors"].update(d["lazy_factors"])
         del d["lazy_quotes"]
         del d["lazy_factors"]
-        t[investments_id]=d
+        t[str(investments_id)]=d
     return t
 
 def t_keys_not_investment():
